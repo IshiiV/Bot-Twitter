@@ -6,10 +6,10 @@ var request = require('request');
 console.log("Hello World! I am a twitter bot!");
 
 var secret = {
-	consumer_key: '',
-	consumer_secret: '',
-	access_token_key: '',
-	access_token_secret: ''
+	consumer_key: '1J1KO6C7Nxnfby36FNbCHsVJR',
+	consumer_secret: '5Dm0K27vo2oQAT0rgmjNYzVaCJhtrYfppWWbxaqHUbscENahsv',
+	access_token_key: '1066778119955251200-lAHbbRm5I1rr7QOqpGq0MR0OycmNsF',
+	access_token_secret: '90er4kffE926qgZZLU6Ua4VkRGWzzYYzTnS9qFyIlIUX7'
 }
 
 var MongoClient = require('mongodb').MongoClient;
@@ -78,7 +78,7 @@ console.log('Tweeting personalised news');
 		request({
 			url: 'https://newsapi.org/v2/sources?category=' +
 				interest +
-				'&apiKey=',
+				'&apiKey=02bca42e3f5f421d874ba4107e3cc249',
 			method: 'GET'
 		},
 		function (error, response, body) {
@@ -120,7 +120,7 @@ function topNewsTweeter(newsSource, screen_name, status_id){
 	request({
 		url: 'https://newsapi.org/v2/top-headlines?sources='
 		+ newsSource +
-		'&apiKey=',
+		'&apiKey=02bca42e3f5f421d874ba4107e3cc249',
 		method: 'GET'
 	},
 	function (error, response, body) {
@@ -247,7 +247,7 @@ function getAllSourcesAndTweet(){
 	var sources = [];
 	console.log('getting sources...')
 	request({
-			url: 'https://newsapi.org/v2/sources?apiKey=',
+			url: 'https://newsapi.org/v2/sources?apiKey=02bca42e3f5f421d874ba4107e3cc249',
 				method: 'GET'
 		},
 		function (error, response, body) {
