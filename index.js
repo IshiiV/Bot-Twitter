@@ -17,23 +17,11 @@ var MongoClient = require('mongodb').MongoClient;
 var url = 'mongodb://userteste:ufcbot1@ds129454.mlab.com:29454/bot';
 // Use connect method to connect to the server
 
-/*
-MongoClient.connect(url, function(err, db) {
-	console.log("Connected successfully to server");
-	db.close();
-});*/
+var Twitter = new TwitterPackage(secret);
 
-function findDocuments(db, callback) {
-// Get the documents collection
-	var collection = db.collection('users');
-// Find documents
-	collection.find({}).toArray(function(err, docs) {
-		callback(docs);
-	});
-}
 
 var userInterests = [];
-loadUserData();
+//loadUserData();
 
 function loadUserData(){
 	// Use connect method to connect to the server
@@ -60,6 +48,14 @@ function loadUserData(){
 	});
 }
 
+function findDocuments(db, callback) {
+// Get the documents collection
+	var collection = db.collection('users');
+// Find documents
+	collection.find({}).toArray(function(err, docs) {
+		callback(docs);
+	});
+}
 
 
 //Use this line to hardcoding an user.
@@ -144,7 +140,96 @@ function tweetTopArticle(articles, screen_name, status_id){
 
 
 
-var Twitter = new TwitterPackage(secret);
+
+twitterhashtag("#meutwitterbot", (screen_name, text)=> {
+
+ 	responseUser(screen_name,text);
+ 	console.log("deu certo");
+});
+
+
+
+
+function responseUser (screen_name, text){
+	console.log('Tweet Msg:' + text);
+	console.log('Tweet from:' + '@' + screen_name);
+
+	var userInterest = getInterestedGenre(text);
+	var userSentiment = getSentiment(text);
+	var user = { 'screen_name' : screen_name,
+	'user_interest' : userInterest};
+
+	console.log(user);
+	// Use connect method to connect to the server
+	MongoClient.connect(url, function(err, db) {
+		console.log("Connected successfully to server");
+		var collection = db.collection('users');
+		if (userSentiment == 'positive'){
+			collection.insertMany([user], function(err, result) {
+				if (err){
+					console.log(err);
+				} else {
+					console.log("Inserted a user interest into the collection");
+					db.close();
+				}
+			});
+		} else {
+			collection.deleteOne(user, function(err, result) {
+				console.log(err);
+				console.log("Deleted a user interest from the collection");
+				db.close();
+			});
+		}
+	});
+}
+
+function getSentiment(text){
+	if (text.search('not interested') != -1){
+		return 'negative';
+	}
+	if (text.search('no more') != -1){
+		return 'negative';
+	}
+	if (text.search('don\'t send') != -1){
+		return 'negative';
+	}
+	if (text.search('no ') != -1){
+		return 'negative';
+	}
+	if (text.search('dont like ') != -1){
+		return 'negative';
+	}
+	if (text.search('unsubscribe ') != -1){
+		return 'negative';
+	}
+	if (text.search('don\'t follow ') != -1){
+		return 'negative';
+	}
+	if (text.search('stop ') != -1){
+		return 'negative';
+	}
+	return 'positive';
+}
+
+function getInterestedGenre(text){
+	if (text.search('tech') != -1 || text.search('technology') != -1 ){
+		return 'technology';
+	}
+	else if (text.search('all kinds') != -1){
+		return 'general';
+	}
+	else if (text.search('politics') != -1 || text.search('political') != -1){
+		return 'politics';
+	}
+	else if (text.search('sports') != -1){
+		return 'sport';
+	}
+	else if (text.search('business') != -1){
+		return 'business';
+	}
+}
+
+
 
 
 
@@ -154,13 +239,14 @@ var Twitter = new TwitterPackage(secret);
 //twitterhashtag(hashtag);
 
 // Find all tweets with a certain hashtag
-function twitterhashtag(hashtag){
+function twitterhashtag(hashtag, callback){
 	console.log('Listening to:' + hashtag);
 
 	Twitter.stream('statuses/filter', {track: hashtag}, function(stream) {
 		stream.on('data', function(tweet) {
 			console.log('Tweet:@' + tweet.user.screen_name + '\t' + tweet.text);
 			console.log('------')
+			callback(tweet.user.screen_name, tweet.text);
 		});
 		stream.on('error', function(error) {
 			console.log(error);
