@@ -21,31 +21,54 @@ var Twitter = new TwitterPackage(secret);
 
 
 var userInterests = [];
-//loadUserData();
+loadUserData();
+
+
+twitterhashtag("#meutwitterbot", (screen_name, text)=> {
+
+ 	responseUser(screen_name,text);
+ 	console.log("deu certo");
+});
+
+
+
 
 function loadUserData(){
-	// Use connect method to connect to the server
-	MongoClient.connect(url, function(err, db) {
-		console.log("Connected successfully to server");
-		findDocuments(db, function(docs) {
-			//console.log("Found the following records");
-			for (var i = 0; i < docs.length; i++){
-				var user = {};
-				user.screen_name = docs[i].screen_name;
-				user.user_interest = docs[i].user_interest;
-				userInterests.push(user);
-			}
-			db.close();
-			console.log(userInterests);
-			//tweet to those followers who have
-			//expressed interest in specific categories
+	setInterval(function () {
 
+		// Use connect method to connect to the server
+		MongoClient.connect(url, function(err, db) {
+			console.log("Connected successfully to server");
+			findDocuments(db, function(docs) {
+				//console.log("Found the following records");
+				userInterests = [];
+				for (var i = 0; i < docs.length; i++){
+					var user = {};
+					user.screen_name = docs[i].screen_name;
+					user.user_interest = docs[i].user_interest;
+					userInterests.push(user);
+				}
+				db.close();
+				console.log(userInterests);
+				//tweet to those followers who have
+				//expressed interest in specific categories
+				
+				for (var i=0; i < userInterests.length; i++){
+					var user = userInterests[i];
+					var screen_name = user.screen_name;
+					var interest = user.user_interest;
+					var status_id = user.in_reply_to_status_id;
+					//console.log('screen_name: '+screen_name+" interest: "+interest+" i: "+i+"PRIMEIRO");
+					//console.log(userInterests.length);
+					//get sources
+					topcountrytweet(user,screen_name,interest,status_id);
+					//console.log('screen_name: '+screen_name+" interest: "+interest+" i: "+i+"ultimio");
+				}
 
-			//TEM ALGO MUITO ERRSADO
-
-			tweetUserSpecificNews();
+			//tweetUserSpecificNews();
+			});
 		});
-	});
+	}, 60 * 1000); 
 }
 
 function findDocuments(db, callback) {
@@ -56,6 +79,32 @@ function findDocuments(db, callback) {
 		callback(docs);
 	});
 }
+
+
+function topcountrytweet(user,screen_name,interest,status_id){
+	request({
+		url: 'https://newsapi.org/v2/top-headlines?country=br&category=' +
+			interest +
+			'&apiKey=02bca42e3f5f421d874ba4107e3cc249',
+		method: 'GET'
+	},
+	function (error, response, body) {
+		if (!error && response.statusCode == 200) {
+			console.log('Tweeting news');
+			var botResponse = JSON.parse(body);
+			//console.log(botResponse);
+			console.log('screen_name: '+screen_name+" interest: "+interest);
+			tweetTopArticle(botResponse.articles, screen_name);
+		} else {
+			console.log('Sorry. No new');
+		}
+	});
+	//console.log('Termino da fun');
+}
+
+
+
+
 
 
 //Use this line to hardcoding an user.
@@ -81,13 +130,12 @@ console.log('Tweeting personalised news');
 			if (!error && response.statusCode == 200) {
 				// Print out the response body
 				var botResponse = JSON.parse(body);
-				console.log(botResponse);
+				//console.log(botResponse);
 				var sources = [];
 				for (var i = 0; i < botResponse.sources.length;
 					i++)
 				{
-					console.log('adding.. ' +
-						botResponse.sources[i].id)
+					//console.log('adding.. ' + botResponse.sources[i].id)
 					sources.push(botResponse.sources[i].id)
 				}
 				tweetFromRandomSource(sources, screen_name, status_id);
@@ -123,7 +171,7 @@ function topNewsTweeter(newsSource, screen_name, status_id){
 		//response is from the bot
 		if (!error && response.statusCode == 200) {
 			var botResponse = JSON.parse(body);
-			console.log(botResponse);
+			//console.log(botResponse);
 			tweetTopArticle(botResponse.articles, screen_name);
 		} else {
 			console.log('Sorry. No new');
@@ -132,20 +180,9 @@ function topNewsTweeter(newsSource, screen_name, status_id){
 } 
 //Tweet top new.
 function tweetTopArticle(articles, screen_name, status_id){
-	var article = articles[0];
+	var article = articles[1];
 	tweet(article.title + " " + article.url, screen_name);
 }
-
-
-
-
-
-
-twitterhashtag("#meutwitterbot", (screen_name, text)=> {
-
- 	responseUser(screen_name,text);
- 	console.log("deu certo");
-});
 
 
 
@@ -218,14 +255,20 @@ function getInterestedGenre(text){
 	else if (text.search('all kinds') != -1){
 		return 'general';
 	}
-	else if (text.search('politics') != -1 || text.search('political') != -1){
-		return 'politics';
-	}
 	else if (text.search('sports') != -1){
-		return 'sport';
+		return 'sports';
 	}
 	else if (text.search('business') != -1){
 		return 'business';
+	}
+	else if (text.search('entertainment') != -1){
+		return 'entertainment';
+	}
+	else if (text.search('health') != -1){
+		return 'health';
+	}
+	else if (text.search('science') != -1){
+		return 'science';
 	}
 }
 
@@ -274,11 +317,12 @@ function tweet(statusMsg, screen_name, status_id){
 			// if there was an error while tweeting
 			if (err) {
 				console.log('Something went wrong while TWEETING...');
+				console.log('screen_name: '+screen_name+" msg: "+msg);
 				console.log(err);
 			}
 			else if (response) {
 				console.log('Tweeted!!!');
-				console.log(response)
+				//console.log(response)
 			}
 	});
 }
