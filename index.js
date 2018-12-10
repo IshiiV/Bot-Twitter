@@ -25,7 +25,7 @@ var urlnews = "";
 var urlarticle = "";
 
 //Função responsável pra tweetar notícias
-//loadUserData();
+loadUserData();
 
 
 twitterhashtag("#meutwitterbot", (screen_name, text)=> {
@@ -136,7 +136,7 @@ function tweeturlfake(statusMsg, screen_name, status_id){
 		msg = msg.concat("\nResultado do Fakenewsdetector: "+urlnews);
 		msg = msg.concat(" "+ new Date());
 		console.log('Tweet:' + msg);
-		/*
+		
 		Twitter.post('statuses/update', {
 			status: msg,
 			in_reply_to_status_id: status_id_response
@@ -151,8 +151,8 @@ function tweeturlfake(statusMsg, screen_name, status_id){
 					console.log('Tweeted!!!');
 					//console.log(response)
 				}
-		});*/
-	}, 5000);
+		});
+	}, 10000);
 }
 
 function responseUser (screen_name, text){
@@ -180,7 +180,7 @@ function responseUser (screen_name, text){
 			});
 		} else {
 			collection.deleteOne(user, function(err, result) {
-				console.log(err);
+				//console.log(err);
 				console.log("Deleted a user interest from the collection");
 				db.close();
 			});
