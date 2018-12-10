@@ -21,20 +21,29 @@ var Twitter = new TwitterPackage(secret);
 
 
 var userInterests = [];
-loadUserData();
+var urlnews = ""; 
+var urlarticle = "";
+
+//Função responsável pra tweetar notícias
+//loadUserData();
 
 
 twitterhashtag("#meutwitterbot", (screen_name, text)=> {
-
  	responseUser(screen_name,text);
- 	console.log("deu certo");
+});
+
+twitterhashtagfakenews("#meutwitterbotnews", (screen_name, text)=> {
+ 	responseUserFakenews(screen_name,text);
 });
 
 
 
 
+
+
 function loadUserData(){
-	setInterval(function () {
+	//setInterval(function () {
+		console.log("\n ------------- Send News (" + new Date() + ")-------------\n");
 
 		// Use connect method to connect to the server
 		MongoClient.connect(url, function(err, db) {
@@ -56,19 +65,22 @@ function loadUserData(){
 				for (var i=0; i < userInterests.length; i++){
 					var user = userInterests[i];
 					var screen_name = user.screen_name;
+					var country = 'br';
 					var interest = user.user_interest;
 					var status_id = user.in_reply_to_status_id;
 					//console.log('screen_name: '+screen_name+" interest: "+interest+" i: "+i+"PRIMEIRO");
 					//console.log(userInterests.length);
 					//get sources
-					topcountrytweet(user,screen_name,interest,status_id);
+					topcountrytweet(user,screen_name,country,interest,status_id,
+						(articles, screen_name, status_id) => {
+							tweetTopArticle(articles, screen_name, status_id);
+						}
+					);
 					//console.log('screen_name: '+screen_name+" interest: "+interest+" i: "+i+"ultimio");
 				}
-
-			//tweetUserSpecificNews();
 			});
 		});
-	}, 60 * 1000); 
+//}, 60 * 1000); 
 }
 
 function findDocuments(db, callback) {
@@ -80,112 +92,68 @@ function findDocuments(db, callback) {
 	});
 }
 
-
-function topcountrytweet(user,screen_name,interest,status_id){
+//Encontrar lista da notícias mais importantes.
+function topcountrytweet(user,screen_name,country,interest,status_id, callback){
 	request({
-		url: 'https://newsapi.org/v2/top-headlines?country=br&category=' +
-			interest +
-			'&apiKey=02bca42e3f5f421d874ba4107e3cc249',
+		url: 'https://newsapi.org/v2/top-headlines?country=' +
+			country +'&category=' +
+			interest +'&apiKey=02bca42e3f5f421d874ba4107e3cc249',
 		method: 'GET'
 	},
 	function (error, response, body) {
 		if (!error && response.statusCode == 200) {
-			console.log('Tweeting news');
+			console.log('\nTweeting news');
 			var botResponse = JSON.parse(body);
 			//console.log(botResponse);
 			console.log('screen_name: '+screen_name+" interest: "+interest);
-			tweetTopArticle(botResponse.articles, screen_name);
+			
+			//tweetTopArticle(botResponse.articles, screen_name, status_id);
+			callback(botResponse.articles, screen_name, status_id);
 		} else {
 			console.log('Sorry. No new');
 		}
 	});
-	//console.log('Termino da fun');
 }
 
-
-
-
-
-
-//Use this line to hardcoding an user.
-//var userInterests = [{'screen_name':'srinivasancj','user_interest': 'technology'}];
-
-//tweetUserSpecificNews();
-
-function tweetUserSpecificNews(){
-console.log('Tweeting personalised news');
-	for (var i=0; i < userInterests.length; i++){
-		var user = userInterests[i];
-		var screen_name = user.screen_name;
-		var interest = user.user_interest;
-		var status_id = user.in_reply_to_status_id;
-		//get sources
-		request({
-			url: 'https://newsapi.org/v2/sources?category=' +
-				interest +
-				'&apiKey=02bca42e3f5f421d874ba4107e3cc249',
-			method: 'GET'
-		},
-		function (error, response, body) {
-			if (!error && response.statusCode == 200) {
-				// Print out the response body
-				var botResponse = JSON.parse(body);
-				//console.log(botResponse);
-				var sources = [];
-				for (var i = 0; i < botResponse.sources.length;
-					i++)
-				{
-					//console.log('adding.. ' + botResponse.sources[i].id)
-					sources.push(botResponse.sources[i].id)
-				}
-				tweetFromRandomSource(sources, screen_name, status_id);
-			} else {
-				console.log('Sorry. No news in this category.');
-			}
-		});
-	}
-}
-
-
-
-//Tweet top new from a random sorce.
-function tweetFromRandomSource(sources, screen_name, status_id){
-	var max = sources.length;
-	var randomSource = sources[Math.floor(Math.random() *
-		(max + 1))];
-	topNewsTweeter(randomSource, screen_name, status_id);
-}
-
-
-
-//topNewsTweeter('ign', null);
-//Find and tweet top news.
-function topNewsTweeter(newsSource, screen_name, status_id){
-	request({
-		url: 'https://newsapi.org/v2/top-headlines?sources='
-		+ newsSource +
-		'&apiKey=02bca42e3f5f421d874ba4107e3cc249',
-		method: 'GET'
-	},
-	function (error, response, body) {
-		//response is from the bot
-		if (!error && response.statusCode == 200) {
-			var botResponse = JSON.parse(body);
-			//console.log(botResponse);
-			tweetTopArticle(botResponse.articles, screen_name);
-		} else {
-			console.log('Sorry. No new');
-		}
-	});
-} 
-//Tweet top new.
+//find top new.
 function tweetTopArticle(articles, screen_name, status_id){
 	var article = articles[1];
-	tweet(article.title + " " + article.url, screen_name);
+	//urlnews = '';
+	isFakeNews(article.url);
+	//tweet(article.title + " " + article.url, screen_name);
+	tweeturlfake(article.title + " " + article.url, screen_name);
 }
 
-
-
+function tweeturlfake(statusMsg, screen_name, status_id){
+	setTimeout(function () {
+		console.log('\nSending tweet to: ' + screen_name);
+		console.log('In response to:' + status_id);
+		var msg = statusMsg;
+		var status_id_response = status_id;
+		if (screen_name != null){
+			msg = '@' + screen_name + ' ' + statusMsg;
+		}
+		msg = msg.concat("\nResultado do Fakenewsdetector: "+urlnews);
+		msg = msg.concat(" "+ new Date());
+		console.log('Tweet:' + msg);
+		/*
+		Twitter.post('statuses/update', {
+			status: msg,
+			in_reply_to_status_id: status_id_response
+			}, function(err, response) {
+				// if there was an error while tweeting
+				if (err) {
+					console.log('Something went wrong while TWEETING...');
+					console.log('screen_name: '+screen_name+" msg: "+msg);
+					console.log(err);
+				}
+				else if (response) {
+					console.log('Tweeted!!!');
+					//console.log(response)
+				}
+		});*/
+	}, 5000);
+}
 
 function responseUser (screen_name, text){
 	console.log('Tweet Msg:' + text);
@@ -245,38 +213,52 @@ function getSentiment(text){
 	if (text.search('stop ') != -1){
 		return 'negative';
 	}
+	//Informations in portuguese
+	if (text.search('não ') != -1){
+		return 'negative';
+	}
+	if (text.search('pare ') != -1){
+		return 'negative';
+	}
+	if (text.search('cancelar ') != -1){
+		return 'negative';
+	}
 	return 'positive';
 }
 
 function getInterestedGenre(text){
-	if (text.search('tech') != -1 || text.search('technology') != -1 ){
+	if (text.search('tech') != -1 || text.search('technology') != -1 || text.search('tecnologia') != -1 ){
 		return 'technology';
 	}
-	else if (text.search('all kinds') != -1){
+	else if (text.search('all kinds') != -1 || text.search('') != -1){
 		return 'general';
 	}
-	else if (text.search('sports') != -1){
+	else if (text.search('sports') != -1 || text.search('esportes') != -1){
 		return 'sports';
 	}
-	else if (text.search('business') != -1){
+	else if (text.search('business') != -1 || text.search('negócios') != -1){
 		return 'business';
 	}
-	else if (text.search('entertainment') != -1){
+	else if (text.search('entertainment') != -1 || text.search('entretenimento') != -1){
 		return 'entertainment';
 	}
-	else if (text.search('health') != -1){
+	else if (text.search('health') != -1 || text.search('saúde') != -1){
 		return 'health';
 	}
-	else if (text.search('science') != -1){
+	else if (text.search('science') != -1 || text.search('ciência') != -1){
 		return 'science';
 	}
 }
 
+function responseUserFakenews(screen_name, text){
+	var responseurl = text.substr(19); 
+	console.log('URL:' + responseurl);
+	console.log('Tweet from:' + '@' + screen_name);
 
+	isFakeNews1(screen_name,responseurl);
+	//console.log(urlnews);
+}
 
-
-
-//tweet ('I am a Twitter Bot!', null, null);
 
 //var hashtag = '#NationalCookieDay '; //put any hashtag to listen e.g. #brexit
 //twitterhashtag(hashtag);
@@ -297,7 +279,100 @@ function twitterhashtag(hashtag, callback){
 	});
 }
 
+function twitterhashtagfakenews(hashtag, callback){
+	console.log('Listening to:' + hashtag);
 
+	Twitter.stream('statuses/filter', {track: hashtag}, function(stream) {
+		stream.on('data', function(tweet) {
+			console.log('Verifica notícia de @' + tweet.user.screen_name + '\t tweet: ' + tweet.text);
+			console.log('------')
+			callback(tweet.user.screen_name, tweet.text);
+		});
+		stream.on('error', function(error) {
+			console.log(error);
+		});
+	});
+}
+
+
+/*Lista dos domínios verificados:
+    "cnn.com",
+    "nytimes.com",
+    "theguardian.com",
+    "washingtonpost.com",
+    "bbc.co.uk",
+    "forbes.com",
+    "g1.globo.com",
+    "estadao.com.br",
+    "folha.com.br",
+    "uol.com.br",
+*/ 
+//isFakeNews(url);
+function isFakeNews(url,callback) {
+	request(
+		{
+			url: "https://api.fakenewsdetector.org/votes?url="+url+"&title=",
+			method: "GET"
+		},
+		function(error, response, body) {
+			var rebalancedChance = 0;
+
+			urlnews = "";
+			if (!error && response.statusCode == 200) {
+				var response = JSON.parse(body);
+				console.log("\nVerificando notícia: " + url + "\n");
+				if(response.domain != null){
+					if(response.domain.category_id==1)urlnews = urlnews.concat("Notícia Real.")
+					if(response.domain.category_id==2)urlnews = urlnews.concat("Notícia Falsa");
+					if(response.domain.category_id==3)urlnews = urlnews.concat("Clickbait");
+					if(response.domain.category_id==4)urlnews = urlnews.concat("Extremamente Tendencioso");
+					if(response.domain.category_id==5)urlnews = urlnews.concat("Satira");
+					if(response.domain.category_id==6)urlnews = urlnews.concat("Nao é notícia");
+				}
+				else{
+				//robot predictions
+				    if (Number(response.robot.fake_news) > 0.5){
+			    	    rebalancedChance = (Number(response.robot.fake_news) * 100 - 50) * 2
+					    if (rebalancedChance >= 66)
+					    	urlnews = urlnews.concat("Tenho quase certeza que é Fake news.");
+					    else if (rebalancedChance >= 33)
+					        urlnews = urlnews.concat("Parece muito ser Fake news.");
+					    else
+					        urlnews = urlnews.concat("Parece ser Fake news.");
+				    }    
+				    if (Number(response.robot.clickbait) > 0.5){
+			    	    rebalancedChance = (Number(response.robot.clickbait) * 100 - 50) * 2
+					    if (rebalancedChance >= 66)
+					    	urlnews = urlnews.concat("Tenho quase certeza que é Clickbait.");
+					    else if (rebalancedChance >= 33)
+					        urlnews = urlnews.concat("Parece muito ser Clickbait.");
+					    else
+					        urlnews = urlnews.concat("Parece ser Clickbait.");
+				    }   
+				    if (Number(response.robot.extremely_biased) > 0.5){
+			    	    rebalancedChance = (Number(response.robot.extremely_biased) * 100 - 50) * 2
+					    if (rebalancedChance >= 66)
+					    	urlnews = urlnews.concat("Tenho quase certeza que é Extremamente tendencioso.");
+					    else if (rebalancedChance >= 33)
+					        urlnews = urlnews.concat("Parece muito ser Extremamente tendencioso.");
+					    else
+					        urlnews = urlnews.concat("Parece ser Extremamente tendencioso.");
+				    }  
+				    if ((Number(response.robot.fake_news) < 0.5)&&(Number(response.robot.clickbait) < 0.5)&&(Number(response.robot.extremely_biased) < 0.5))
+ 						urlnews = urlnews.concat("Tendencioso.");
+				}
+				console.log(urlnews);
+			} else{
+				console.log("Sorry. URL error");
+				console.log(url);
+			}
+		}
+	);
+}
+
+
+
+//------------------FUNÇÕES QUE NÃO ESTÃO SENDO USADAS---------------------
 
 
 // Make a tweet to a person.
@@ -399,29 +474,133 @@ function getAllSourcesAndTweet(){
 }
 
 
+//Use this line to hardcoding an user.
+//var userInterests = [{'screen_name':'srinivasancj','user_interest': 'technology'}];
 
-//var url = "https://g1.globo.com/educacao/guia-de-carreiras/noticia/2018/12/03/mais-medicos-triplica-as-vagas-de-residencia-em-medicina-de-familia-mas-dois-tercos-delas-estao-ociosas.ghtml";
-//isFakeNews(url);
-function isFakeNews(url) {
+//tweetUserSpecificNews();
+
+function tweetUserSpecificNews(){
+console.log('Tweeting personalised news');
+	for (var i=0; i < userInterests.length; i++){
+		var user = userInterests[i];
+		var screen_name = user.screen_name;
+		var interest = user.user_interest;
+		var status_id = user.in_reply_to_status_id;
+		//get sources
+		request({
+			url: 'https://newsapi.org/v2/sources?category=' +
+				interest +
+				'&apiKey=02bca42e3f5f421d874ba4107e3cc249',
+			method: 'GET'
+		},
+		function (error, response, body) {
+			if (!error && response.statusCode == 200) {
+				// Print out the response body
+				var botResponse = JSON.parse(body);
+				//console.log(botResponse);
+				var sources = [];
+				for (var i = 0; i < botResponse.sources.length;
+					i++)
+				{
+					//console.log('adding.. ' + botResponse.sources[i].id)
+					sources.push(botResponse.sources[i].id)
+				}
+				tweetFromRandomSource(sources, screen_name, status_id);
+			} else {
+				console.log('Sorry. No news in this category.');
+			}
+		});
+	}
+}
+
+
+
+//Tweet top new from a random sorce.
+function tweetFromRandomSource(sources, screen_name, status_id){
+	var max = sources.length;
+	var randomSource = sources[Math.floor(Math.random() *
+		(max + 1))];
+	topNewsTweeter(randomSource, screen_name, status_id);
+}
+
+
+
+//topNewsTweeter('ign', null);
+//Find and tweet top news.
+function topNewsTweeter(newsSource, screen_name, status_id){
+	request({
+		url: 'https://newsapi.org/v2/top-headlines?sources='
+		+ newsSource +
+		'&apiKey=02bca42e3f5f421d874ba4107e3cc249',
+		method: 'GET'
+	},
+	function (error, response, body) {
+		//response is from the bot
+		if (!error && response.statusCode == 200) {
+			var botResponse = JSON.parse(body);
+			//console.log(botResponse);
+			tweetTopArticle(botResponse.articles, screen_name);
+		} else {
+			console.log('Sorry. No new');
+		}
+	});
+} 
+
+function isFakeNews1(screen_name,url,callback) {
 	request(
 		{
 			url: "https://api.fakenewsdetector.org/votes?url="+url+"&title=",
 			method: "GET"
 		},
 		function(error, response, body) {
+			var rebalancedChance = 0;
+
+			urlnews = "";
 			if (!error && response.statusCode == 200) {
 				var response = JSON.parse(body);
-				console.log("\n Verificando noticia:" + url + "\n");
-				if(response.domain.category_id==1)console.log("Noticia Real");
-				if(response.domain.category_id==2)console.log("Noticia Falsa");
-				if(response.domain.category_id==3)console.log("Clickbait");
-				if(response.domain.category_id==4)console.log("Extremamente Tendencioso");
-				if(response.domain.category_id==5)console.log("Satira");
-				if(response.domain.category_id==6)console.log("Nao é noticia");
-
-				console.log("fake news:                " + 100 * Number(response.robot.fake_news) + "%");
-				console.log("clickbait:                " + 100 * Number(response.robot.clickbait) + "%");
-				console.log("extremamente tendencioso: " + 100 * Number(response.robot.extremely_biased) + "%");
+				console.log("\nVerificando notícia: " + url + "\n");
+				if(response.domain != null){
+					if(response.domain.category_id==1)urlnews = urlnews.concat("Notícia Real.")
+					if(response.domain.category_id==2)urlnews = urlnews.concat("Notícia Falsa");
+					if(response.domain.category_id==3)urlnews = urlnews.concat("Clickbait");
+					if(response.domain.category_id==4)urlnews = urlnews.concat("Extremamente Tendencioso");
+					if(response.domain.category_id==5)urlnews = urlnews.concat("Satira");
+					if(response.domain.category_id==6)urlnews = urlnews.concat("Nao é notícia");
+				}
+				else{
+				//robot predictions
+				    if (Number(response.robot.fake_news) > 0.5){
+			    	    rebalancedChance = (Number(response.robot.fake_news) * 100 - 50) * 2
+					    if (rebalancedChance >= 66)
+					    	urlnews = urlnews.concat("Tenho quase certeza que é Fake news.");
+					    else if (rebalancedChance >= 33)
+					        urlnews = urlnews.concat("Parece muito ser Fake news.");
+					    else
+					        urlnews = urlnews.concat("Parece ser Fake news.");
+				    }    
+				    if (Number(response.robot.clickbait) > 0.5){
+			    	    rebalancedChance = (Number(response.robot.clickbait) * 100 - 50) * 2
+					    if (rebalancedChance >= 66)
+					    	urlnews = urlnews.concat("Tenho quase certeza que é Clickbait.");
+					    else if (rebalancedChance >= 33)
+					        urlnews = urlnews.concat("Parece muito ser Clickbait.");
+					    else
+					        urlnews = urlnews.concat("Parece ser Clickbait.");
+				    }   
+				    if (Number(response.robot.extremely_biased) > 0.5){
+			    	    rebalancedChance = (Number(response.robot.extremely_biased) * 100 - 50) * 2
+					    if (rebalancedChance >= 66)
+					    	urlnews = urlnews.concat("Tenho quase certeza que é Extremamente tendencioso.");
+					    else if (rebalancedChance >= 33)
+					        urlnews = urlnews.concat("Parece muito ser Extremamente tendencioso.");
+					    else
+					        urlnews = urlnews.concat("Parece ser Extremamente tendencioso.");
+				    }  
+				    if ((Number(response.robot.fake_news) < 0.5)&&(Number(response.robot.clickbait) < 0.5)&&(Number(response.robot.extremely_biased) < 0.5))
+ 						urlnews = urlnews.concat("Tendencioso.");
+				}
+				console.log(urlnews);
+				tweet(urlnews,screen_name);
 			} else{
 				console.log("Sorry. URL error");
 				console.log(url);
@@ -429,4 +608,3 @@ function isFakeNews(url) {
 		}
 	);
 }
-
